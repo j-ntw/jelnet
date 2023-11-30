@@ -1,5 +1,8 @@
 from telnetlib import Telnet
 
+import anyio
+import asynctelnet
+
 
 class Jelnet(Telnet):
     def __init__(self, host: str | None = None, port: int = 0) -> None:

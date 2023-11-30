@@ -285,7 +285,7 @@ class Kelnet:
 
         """
         n = len(match)
-        self.process_rawq()
+        await self.process_rawq()
         i = self.cookedq.find(match)
         if i >= 0:
             i = i + n
@@ -346,7 +346,7 @@ class Kelnet:
         Don't block unless in the midst of an IAC sequence.
 
         """
-        self.process_rawq()
+        await self.process_rawq()
         while not self.eof:
             await self.fill_rawq()
             await self.process_rawq()
@@ -519,6 +519,8 @@ class Kelnet:
     async def interact(self):
         """Interaction function, emulates a very dumb telnet client."""
         if sys.platform == "win32":
+            self.reader, self.writer = asyncio.open_connection()
+
             await self.mt_interact()
             return
         with _TelnetSelector() as selector:
@@ -545,12 +547,12 @@ class Kelnet:
     async def mt_interact(self):
         """Multithreaded version of interact()."""
 
-        asyncio.to_thread(self.listener, ())
+        asyncio.to_thread(self.listener)
         while 1:
             line = sys.stdin.readline()
             if not line:
                 break
-            self.write(line.encode("ascii"))
+            await self.write(line.encode("ascii"))
 
     async def listener(self):
         """Helper for mt_interact() -- this executes in the other thread."""
@@ -600,7 +602,7 @@ class Kelnet:
         with _TelnetSelector() as selector:
             selector.register(self, selectors.EVENT_READ)
             while not self.eof:
-                self.process_rawq()
+                await self.process_rawq()
                 for i in indices:
                     m = list[i].search(self.cookedq)
                     if m:
@@ -616,7 +618,7 @@ class Kelnet:
                             break
                         else:
                             continue
-                self.fill_rawq()
+                await self.fill_rawq()
         text = self.read_very_lazy()
         if not text and self.eof:
             raise EOFError
@@ -651,7 +653,7 @@ def test():
             port = int(portstr)
         except ValueError:
             port = socket.getservbyname(portstr, "tcp")
-    with Telnet() as tn:
+    with Kelnet() as tn:
         tn.set_debuglevel(debuglevel)
         tn.open(host, port, timeout=0.5)
         tn.interact()
